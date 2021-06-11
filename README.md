@@ -14,4 +14,5 @@ Example:
   reporter.log_metric("val_acc", float(epoch_val_acc), epoch)
   
   #save model
+  
   reporter.save_checkpoint(state_dict, ckpt_name, epoch)
