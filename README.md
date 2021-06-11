@@ -1,7 +1,7 @@
 # Reporter
 
 
-Example:
+Example in python:
   
   
   #init
@@ -16,3 +16,11 @@ Example:
   #save model
   
   reporter.save_checkpoint(state_dict, ckpt_name, epoch)
+
+
+View:
+
+
+  tensorboard --logdir logs --port 8889 --host 0.0.0.0
+  
+  
