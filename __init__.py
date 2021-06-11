@@ -4,13 +4,35 @@ from datetime import datetime
 import shutil
 from tensorboardX import SummaryWriter
 import torch
-from utils import write_param
+#from utils import write_param
 
 
 def _check_mk_path(path):
     if not osp.exists(path):
         os.makedirs(path)
+import numpy as np
+from functools import partial
 
+def write_param(net, writer, epoch, lp=1):
+    def _write_single_param(writer, key, param, lp, epoch):
+        if param is not None:
+            view_channels = param.view(param.size(0), -1)
+            mags = lp(view_channels, dim=1)
+            writer.add_histogram(key, mags.clone().cpu().data.numpy(), epoch)
+            return mags.clone().cpu().data.numpy()
+        return np.array([])
+    lp_magnitude = partial(torch.norm, p=lp)
+    mag = np.array([])
+    for key, module in net.named_modules():
+        if isinstance(module, nn.modules.conv._ConvNd):
+            f_mags = _write_single_param(writer, 'CONV/' + key + '.weight', module.weight, lp_magnitude, epoch)
+            mag = np.append(mag, f_mags)
+            f_mags = _write_single_param(writer, 'CONV/' + key + '.bias', module.bias, lp_magnitude, epoch)
+            mag = np.append(mag, f_mags)
+        if isinstance(module, nn.modules.batchnorm._BatchNorm):
+            _write_single_param(writer, 'BN/' + key + '.weight', module.weight, lp_magnitude, epoch)
+            _write_single_param(writer, 'BN/' + key + '.bias', module.bias, lp_magnitude, epoch)
+    writer.add_histogram('all-param', mag, epoch)
 
 class Reporter:
     def __init__(self, log_dir,exp_name):
@@ -46,3 +68,4 @@ class Reporter:
     def save_checkpoint(self, state_dict, ckpt_name, epoch=0):
         checkpoint = {"state_dict": state_dict, "epoch": epoch}
         torch.save(checkpoint, osp.join(self.ckpt_log_dir, ckpt_name))
+
